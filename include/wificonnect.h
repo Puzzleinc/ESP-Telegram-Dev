@@ -6,6 +6,6 @@
 
 // the #include statement and code go here...
 
-void wificonnect(const char* ssid, const char* password, const char* deviceName);
+void wificonnect(const char* ssid, const char* password, const char* deviceName, uint8_t conled );
 
 #endif
