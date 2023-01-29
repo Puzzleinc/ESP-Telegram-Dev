@@ -77,8 +77,8 @@ void loop() {
 	welcome += "Ini adalah bot untuk app esp8266\n";
 	welcome += "ketik /Keyboard untuk menampilkan menu\n";
 	welcome += "ketik /Time untuk waktu timer berjalan\n";
-	welcome += "ketik /SetTime untuk waktu timer berjalan\n";
-	welcome += "ketik /CheckTime untuk melihat catatan waktu tersimpan\n\n";
+	welcome += "ketik /CheckTime untuk melihat catatan waktu tersimpan\n";
+	welcome += "Format pengaturan waktu alarm: MENIT1#MENIT2\n\n";
 
 	if(myBot.getNewMessage(msg)) {
 		if(msg.messageType == CTBotMessageText) {
@@ -88,10 +88,20 @@ void loop() {
 				myBot.sendMessage(msg.sender.id, "Waktu berjalan: " + String(thisTime));
 			} else if (msg.text.equalsIgnoreCase("/checkTime")) {
 				// Cek waktu yang tersimpan
-				myBot.sendMessage(msg.sender.id, "Interval Bahaya: " + String(dangerInterval) + " | Interval Warning: " + String(warningInterval) );
-			} else if (msg.text.equalsIgnoreCase("/settime")) {
-				// Setting waktu
-				myBot.sendMessage(msg.sender.id, "Silahkan masukkan waktu dalam bentuk angka");
+				myBot.sendMessage(msg.sender.id, "Interval peringatan: " + String(warningInterval / 60000) + " menit | Interval Shutdown: " + String(dangerInterval / 60000) + " menit" );
+			} else {
+				String inputWaktu = msg.text;
+				int pembatas = inputWaktu.indexOf("#");
+				uint8_t menit1 = inputWaktu.substring(0, pembatas).toInt();
+				uint8_t menit2 = inputWaktu.substring(pembatas+1, inputWaktu.length()).toInt();
+				if (menit1 < menit2) {
+					warningInterval = menit1 * 60000;
+					dangerInterval = menit2 * 60000;
+					myBot.sendMessage(msg.sender.id, "Interval peringatan: " + String(warningInterval / 60000) + " menit | Interval Shutdown: " + String(dangerInterval / 60000) + " menit");
+				} else {
+					myBot.sendMessage(msg.sender.id, "Error, format waktu tidak valid atau menit ke 2 lebih kecil daripada menit ke 1");
+				}
+			}
 		} else if (msg.messageType == CTBotMessageQuery) {
 			if (msg.callbackQueryData.equals(LIGHT_ON_CALLBACK)) {
 				// pushed "LIGHT ON" button...
