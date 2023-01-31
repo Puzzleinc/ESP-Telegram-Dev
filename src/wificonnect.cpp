@@ -2,7 +2,7 @@
 #include "wificonnect.h"
 
 
-void wificonnect(const char* ssid, const char* password, const char* deviceName, uint8_t conled ) {
+void wificonnect(const char* ssid, const char* password, const char* deviceName) {
     WiFi.hostname(deviceName);      // DHCP Hostname (useful for finding device for static lease)
 
     // Set your Static IP address ------------------------
@@ -28,13 +28,9 @@ void wificonnect(const char* ssid, const char* password, const char* deviceName,
         
     while (WiFi.status() != WL_CONNECTED) {
         Serial.print(".");
-        digitalWrite(conled, HIGH);
-        delay(100);
-        digitalWrite(conled, LOW);
         delay(100);
     }
 
-    digitalWrite(conled , LOW); // turn off the led (inverted logic!)
     Serial.println("WiFi connected");  
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());

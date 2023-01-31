@@ -3,6 +3,7 @@
 #include <CTBot.h>
 
 #include "wificonnect.h"
+#include "gettimesetting.h"
 
 /* Put your SSID & Password */
 const char* ssid;  // Enter SSID here
@@ -21,15 +22,15 @@ CTBotInlineKeyboard myKbd;   // reply keyboard object helper
 
 /* ESP pin configuration */
 uint8_t conled = 2;
-#define buzz 1
-#define redled 3
-#define greenled 0
-#define blueled 4
+#define buzz 5
+#define redled 4
+#define greenled 14
+#define blueled 12
 
 // Define millis variable #1
 
-unsigned long dangerInterval = 1800000; // formula (x/60000) = 30 menit
-unsigned long warningInterval = 900000; // 15 menit
+unsigned long dangerInterval; // formula (x/60000) = 30 menit
+unsigned long warningInterval; // 15 menit
 const unsigned long okInterval = 0;
 unsigned long previousTime = 0;
 
@@ -48,11 +49,30 @@ void setup() {
 	ssid = "Puzzle24";  // Enter SSID here
 	password = "gzcmb94463";  // Enter Password here
 	deviceName = "Telegram Bot"; // DHCP Hostname (useful for finding device for static lease)
-	wificonnect(ssid, password, deviceName, conled);
+	wificonnect(ssid, password, deviceName);
 
 	Serial.println(WiFi.gatewayIP());
 
-	//  Connecting to telegram -----------------------
+	// Initialize filesystem -----------------------
+	if(!LittleFS.begin()){
+		Serial.println("An Error has occurred while mounting LittleFS");
+		return;
+	}
+
+	// Testing filesystem -----------------------
+	File file = LittleFS.open("/time.csv", "r");
+	if(!file){
+		Serial.println("Failed to open file for reading");
+		return;
+	}
+	file.close();
+
+	// Get time setting from filesystem -----------------------
+	// dangerInterval = 1800000; // formula (x/60000) = 30 menit
+	// warningInterval = 900000; // 15 menit
+	getTimesetting(warningInterval, dangerInterval);
+
+	// //  Connecting to telegram -----------------------
 	myBot.setTelegramToken(token);
 	// check if all things are ok
 	if (myBot.testConnection())
@@ -60,7 +80,7 @@ void setup() {
 	else
 		Serial.println("\nTest connection Failed");
 
-	//  Creating Keyboard button class -----------------------
+	// //  Creating Keyboard button class -----------------------
 	myKbd.addButton("Lampu Nyala", LIGHT_ON_CALLBACK, CTBotKeyboardButtonQuery);
 	myKbd.addButton("Lampu Mati", LIGHT_OFF_CALLBACK, CTBotKeyboardButtonQuery);
 	myKbd.addRow();
@@ -88,16 +108,28 @@ void loop() {
 				myBot.sendMessage(msg.sender.id, "Waktu berjalan: " + String(thisTime));
 			} else if (msg.text.equalsIgnoreCase("/checkTime")) {
 				// Cek waktu yang tersimpan
+				getTimesetting(warningInterval, dangerInterval);
 				myBot.sendMessage(msg.sender.id, "Interval peringatan: " + String(warningInterval / 60000) + " menit | Interval Shutdown: " + String(dangerInterval / 60000) + " menit" );
 			} else {
 				String inputWaktu = msg.text;
 				int pembatas = inputWaktu.indexOf("#");
 				uint8_t menit1 = inputWaktu.substring(0, pembatas).toInt();
 				uint8_t menit2 = inputWaktu.substring(pembatas+1, inputWaktu.length()).toInt();
+				
 				if (menit1 < menit2) {
-					warningInterval = menit1 * 60000;
-					dangerInterval = menit2 * 60000;
-					myBot.sendMessage(msg.sender.id, "Interval peringatan: " + String(warningInterval / 60000) + " menit | Interval Shutdown: " + String(dangerInterval / 60000) + " menit");
+					//Write to the file
+					File file = LittleFS.open("/time.csv", "w");
+					//Write to the file
+					file.print(inputWaktu);
+					delay(1);
+					//Close the file
+					file.close();
+
+					getTimesetting(warningInterval, dangerInterval);
+					myBot.sendMessage(msg.sender.id, "Interval peringatan: " + String(warningInterval / 60000) + " menit | Interval Shutdown: " + String(dangerInterval / 60000) + " menit" );
+					myBot.sendMessage(msg.sender.id, "Pengaturan tersimpan, mereset perangkat.....");
+
+					// ESP.reset();
 				} else {
 					myBot.sendMessage(msg.sender.id, "Error, format waktu tidak valid atau menit ke 2 lebih kecil daripada menit ke 1");
 				}
@@ -117,7 +149,7 @@ void loop() {
 		}
 	}
 
-	// Millis Function #1
+	// // Millis Function #1
 	if (currentTime >= dangerInterval) {
 	/* Event code */
 		digitalWrite(buzz, HIGH);
